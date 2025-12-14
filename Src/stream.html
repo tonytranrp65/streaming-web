@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title id="stream-title">Loading Stream...</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    .stream-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 100%);
+    }
+
+    .stream-header {
+      background: rgba(20, 20, 20, 0.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 71, 87, 0.2);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .stream-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      margin: 0;
+    }
+
+    .viewer-count {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #a0a0a0;
+      font-size: 14px;
+    }
+
+    .back-btn {
+      color: #fff;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: background 0.2s;
+      font-size: 14px;
+    }
+
+    .back-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .stream-main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 20px;
+      padding: 20px;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .video-wrapper {
+      position: relative;
+      background: #000;
+      border-radius: 16px;
+      overflow: hidden;
+      aspect-ratio: 16/9;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    #stream-video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+      display: block;
+    }
+
+    #camera-video {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 240px;
+      height: 180px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 3px solid #ff4757;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      z-index: 15;
+      display: none;
+      background: #000;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    #camera-video:hover {
+      transform: scale(1.05);
+    }
+
+    .video-wrapper.has-screenshare #camera-video {
+      display: block;
+    }
+
+    .video-wrapper.has-screenshare #stream-video {
+      object-fit: cover;
+    }
+
+    @media (max-width: 768px) {
+      #camera-video {
+        width: 160px;
+        height: 120px;
+        bottom: 10px;
+        right: 10px;
+      }
+    }
+
+    .video-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .live-indicator {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: #ff4757;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(255, 71, 87, 0.4);
+      animation: pulse 2s infinite;
+    }
+
+    .live-indicator::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: white;
+      border-radius: 50%;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.8; }
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .play-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+    }
+
+    .play-button {
+      width: 80px;
+      height: 80px;
+      background: #ff4757;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      color: white;
+      margin-bottom: 16px;
+      transition: all 0.3s;
+      box-shadow: 0 8px 24px rgba(255, 71, 87, 0.4);
+    }
+
+    .play-overlay:hover .play-button {
+      transform: scale(1.1);
+      box-shadow: 0 12px 32px rgba(255, 71, 87, 0.6);
+    }
+
+    .play-overlay p {
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .waiting-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 5;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255, 71, 87, 0.2);
+      border-top-color: #ff4757;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .chat-panel {
+      display: flex;
+      flex-direction: column;
+      background: rgba(20, 20, 20, 0.8);
+      backdrop-filter: blur(20px);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      height: fit-content;
+      max-height: calc(100vh - 120px);
+    }
+
+    .chat-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chat-header h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .online-count {
+      background: rgba(255, 71, 87, 0.2);
+      color: #ff4757;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      min-height: 300px;
+      max-height: 500px;
+    }
+
+    .chat-messages::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .chat-messages::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: rgba(255, 71, 87, 0.3);
+      border-radius: 3px;
+    }
+
+    .welcome-msg {
+      text-align: center;
+      color: #666;
+      font-size: 14px;
+      padding: 20px;
+      font-style: italic;
+    }
+
+    .message {
+      margin-bottom: 12px;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      border-left: 3px solid #ff4757;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message-username {
+      font-weight: 700;
+      color: #ff4757;
+      margin-right: 8px;
+      font-size: 13px;
+    }
+
+    .message-text {
+      color: #e0e0e0;
+      font-size: 14px;
+      word-wrap: break-word;
+    }
+
+    .chat-input-area {
+      padding: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .username-input {
+      width: 100%;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 13px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .username-input:focus {
+      border-color: #ff4757;
+      background: rgba(255, 71, 87, 0.1);
+    }
+
+    .message-input-wrapper {
+      display: flex;
+      gap: 8px;
+    }
+
+    .message-input {
+      flex: 1;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .message-input:focus {
+      border-color: #ff4757;
+      background: rgba(255, 71, 87, 0.1);
+    }
+
+    .send-btn {
+      padding: 12px 24px;
+      background: #ff4757;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+
+    .send-btn:hover {
+      background: #ff3742;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(255, 71, 87, 0.4);
+    }
+
+    .send-btn:active {
+      transform: translateY(0);
+    }
+
+    .stream-controls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .control-btn {
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s;
+    }
+
+    .control-btn:hover {
+      background: rgba(255, 71, 87, 0.8);
+      border-color: #ff4757;
+    }
+
+    @media (max-width: 1024px) {
+      .stream-main {
+        grid-template-columns: 1fr;
+      }
+      
+      .chat-panel {
+        max-height: 400px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="stream-page">
+    <header class="stream-header">
+      <div class="header-left">
+        <h1 class="stream-title" id="stream-title-display">Loading...</h1>
+        <div class="viewer-count" id="viewer-count">👥 0 viewers</div>
+      </div>
+      <a href="/" class="back-btn">← Back to Home</a>
+    </header>
+
+    <div class="stream-main">
+      <div class="video-wrapper" id="video-wrapper" onclick="handleVideoClick()" style="cursor: pointer;">
+        <video id="stream-video" autoplay playsinline muted style="display: none;"></video>
+        <video id="camera-video" autoplay playsinline muted></video>
+        <div id="play-overlay" class="play-overlay" style="display: none;">
+          <div class="play-button">▶</div>
+          <p>Click to play stream</p>
+        </div>
+        <div id="waiting-message" class="waiting-message">
+          <div class="spinner"></div>
+          <p style="color: #fff;">Connecting to stream...</p>
+        </div>
+        <div class="video-overlay">
+          <div class="live-indicator" id="live-badge" style="display: none;">LIVE</div>
+          <div class="stream-controls" id="stream-controls" style="display: none;">
+            <button id="toggle-screenshare" class="control-btn" title="Share Screen">🖥️</button>
+            <button id="toggle-video" class="control-btn" title="Toggle Video">📹</button>
+            <button id="toggle-audio" class="control-btn" title="Toggle Audio">🎤</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-panel">
+        <div class="chat-header">
+          <h3>💬 Chat</h3>
+          <span class="online-count" id="chat-badge">0 online</span>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+          <div class="welcome-msg">Welcome to the stream! Say hello 👋</div>
+        </div>
+        <div class="chat-input-area">
+          <input type="text" id="username-input" class="username-input" placeholder="Your name" maxlength="20" />
+          <div class="message-input-wrapper">
+            <input type="text" id="chat-input" class="message-input" placeholder="Type your message..." maxlength="500" />
+            <button id="send-button" class="send-btn">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomId = window.location.pathname.split('/').pop();
+
+    const streamVideo = document.getElementById('stream-video');
+    const waitingMessage = document.getElementById('waiting-message');
+    const streamTitleDisplay = document.getElementById('stream-title-display');
+    const viewerCount = document.getElementById('viewer-count');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const usernameInput = document.getElementById('username-input');
+    const sendButton = document.getElementById('send-button');
+
+    const cameraVideo = document.getElementById('camera-video');
+    const videoWrapper = document.getElementById('video-wrapper');
+
+    let peerConnections = {};
+    let isStreamer = false;
+    let localStream; // Camera stream
+    let screenStream = null; // Screen share stream
+    let username = '';
+    let isScreenSharing = false;
+
+    const rtcConfiguration = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
+    };
+
+    // Handle video click to start playback
+    function handleVideoClick() {
+      if (streamVideo.paused && streamVideo.srcObject) {
+        streamVideo.play().then(() => {
+          const playOverlay = document.getElementById('play-overlay');
+          if (playOverlay) playOverlay.style.display = 'none';
+        }).catch(err => {
+          console.log('Play failed on click:', err);
+        });
+      }
+    }
+
+    // Handle play overlay click
+    function handlePlayClick() {
+      if (streamVideo.srcObject) {
+        streamVideo.play().then(() => {
+          const playOverlay = document.getElementById('play-overlay');
+          if (playOverlay) playOverlay.style.display = 'none';
+        }).catch(err => {
+          console.error('Play failed:', err);
+        });
+      }
+    }
+
+    // Show play button if autoplay fails
+    function showPlayButton() {
+      const playOverlay = document.getElementById('play-overlay');
+      if (playOverlay) {
+        playOverlay.style.display = 'flex';
+      }
+    }
+
+    // Video event listeners
+    streamVideo.addEventListener('play', () => {
+      console.log('Video started playing');
+      const playOverlay = document.getElementById('play-overlay');
+      if (playOverlay) playOverlay.style.display = 'none';
+    });
+
+    streamVideo.addEventListener('playing', () => {
+      console.log('Video is playing');
+      const playOverlay = document.getElementById('play-overlay');
+      if (playOverlay) playOverlay.style.display = 'none';
+    });
+
+    streamVideo.addEventListener('loadedmetadata', () => {
+      console.log('Video metadata loaded');
+      // Try to play after metadata is loaded
+      if (streamVideo.srcObject && streamVideo.paused) {
+        streamVideo.play().catch(err => {
+          console.log('Play failed after metadata load:', err);
+          showPlayButton();
+        });
+      }
+    });
+
+    // Initialize connection
+    socket.on('connect', () => {
+      console.log('Connected to server');
+      const isHost = urlParams.get('host') === 'true';
+      socket.emit('join-stream', { roomId, isHost });
+    });
+
+    socket.on('stream-joined', (data) => {
+      console.log('Joined stream:', data);
+      document.title = data.streamInfo.title + ' - StreamSwitch';
+      streamTitleDisplay.textContent = data.streamInfo.title;
+      viewerCount.textContent = `👥 ${data.viewerCount} viewers`;
+      
+      const chatBadge = document.getElementById('chat-badge');
+      if (chatBadge) chatBadge.textContent = `${data.viewerCount} online`;
+
+      const isHost = urlParams.get('host') === 'true' || data.isHost;
+      if (isHost) {
+        console.log('Starting as host...');
+        const controls = document.getElementById('stream-controls');
+        if (controls) controls.style.display = 'flex';
+        startStreaming();
+      }
+    });
+
+    socket.on('viewer-joined', (data) => {
+      viewerCount.textContent = `👥 ${data.viewerCount} viewers`;
+      const chatBadge = document.getElementById('chat-badge');
+      if (chatBadge) chatBadge.textContent = `${data.viewerCount} online`;
+    });
+
+    socket.on('viewer-joined-stream', async (viewerId) => {
+      if (!isStreamer || !localStream) return;
+      
+      console.log('Creating peer connection for viewer:', viewerId);
+      const pc = new RTCPeerConnection(rtcConfiguration);
+      peerConnections[viewerId] = pc;
+
+      // Add camera stream tracks
+      localStream.getTracks().forEach(track => {
+        pc.addTrack(track, localStream);
+      });
+
+      // If screen sharing, add screen share tracks
+      if (isScreenSharing && screenStream) {
+        screenStream.getTracks().forEach(track => {
+          pc.addTrack(track, screenStream);
+        });
+      }
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit('ice-candidate', {
+            roomId,
+            candidate: event.candidate,
+            to: viewerId
+          });
+        }
+      };
+
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socket.emit('stream-offer', {
+          roomId,
+          offer,
+          to: viewerId
+        });
+      } catch (error) {
+        console.error('Error creating offer:', error);
+      }
+    });
+
+    socket.on('stream-offer', async (data) => {
+      if (isStreamer) return; // Host doesn't need to handle offers
+      
+      console.log('Received stream offer');
+      const pc = new RTCPeerConnection(rtcConfiguration);
+      
+      let receivedStreams = [];
+      let videoTrackCount = 0;
+
+      pc.ontrack = (event) => {
+        console.log('Received remote track', event.track.kind, event.track.label);
+        if (event.streams && event.streams[0]) {
+          const remoteStream = event.streams[0];
+          const track = event.track;
+          
+          if (track.kind === 'video') {
+            videoTrackCount++;
+            
+            // Check if this is a screen share (usually first video track if screen sharing, or has "screen" in label)
+            const isScreenShare = track.label.toLowerCase().includes('screen') || 
+                                 track.label.toLowerCase().includes('display') || 
+                                 track.label.toLowerCase().includes('desktop') ||
+                                 (videoTrackCount === 1 && track.label.toLowerCase().includes('camera') === false);
+            
+            if (isScreenShare) {
+              // Screen share goes to main video
+              console.log('Setting screen share to main video');
+              streamVideo.srcObject = remoteStream;
+              streamVideo.muted = false;
+              waitingMessage.style.display = 'none';
+              streamVideo.style.display = 'block';
+              videoWrapper.classList.add('has-screenshare');
+              
+              const liveBadge = document.getElementById('live-badge');
+              if (liveBadge) liveBadge.style.display = 'flex';
+              
+              // Try to play
+              setTimeout(() => {
+                const playPromise = streamVideo.play();
+                if (playPromise !== undefined) {
+                  playPromise.then(() => {
+                    console.log('Screen share playing');
+                    const playOverlay = document.getElementById('play-overlay');
+                    if (playOverlay) playOverlay.style.display = 'none';
+                  }).catch(err => {
+                    console.log('Autoplay prevented');
+                    showPlayButton();
+                  });
+                }
+              }, 100);
+            } else {
+              // Camera goes to PIP (second video track or camera track)
+              console.log('Setting camera to PIP');
+              cameraVideo.srcObject = remoteStream;
+              cameraVideo.muted = true;
+              cameraVideo.style.display = 'block';
+              cameraVideo.play().catch(err => console.log('Camera play error:', err));
+            }
+          } else if (track.kind === 'audio') {
+            // Audio can come from either stream, attach to main video
+            if (!streamVideo.srcObject) {
+              // Create a new stream with just audio if we don't have video yet
+              const audioStream = new MediaStream([track]);
+              streamVideo.srcObject = audioStream;
+            }
+          }
+        }
+      };
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit('ice-candidate', {
+            roomId,
+            candidate: event.candidate,
+            to: data.from
+          });
+        }
+      };
+
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit('stream-answer', {
+          roomId,
+          answer,
+          to: data.from
+        });
+        peerConnections[data.from] = pc;
+      } catch (error) {
+        console.error('Error handling offer:', error);
+      }
+    });
+
+    socket.on('stream-answer', async (data) => {
+      if (peerConnections[data.from]) {
+        try {
+          await peerConnections[data.from].setRemoteDescription(
+            new RTCSessionDescription(data.answer)
+          );
+          console.log('Peer connection established');
+        } catch (error) {
+          console.error('Error setting remote description:', error);
+        }
+      }
+    });
+
+    socket.on('ice-candidate', (data) => {
+      if (data.candidate) {
+        if (peerConnections[data.from]) {
+          peerConnections[data.from].addIceCandidate(new RTCIceCandidate(data.candidate));
+        }
+      }
+    });
+
+    // Start streaming (host)
+    async function startStreaming() {
+      try {
+        isStreamer = true;
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: true
+        });
+
+        streamVideo.srcObject = localStream;
+        streamVideo.muted = true;
+        waitingMessage.style.display = 'none';
+        streamVideo.style.display = 'block';
+        
+        // Initialize camera video (will be used for PIP when screen sharing)
+        cameraVideo.srcObject = null;
+        cameraVideo.style.display = 'none';
+        
+        const liveBadge = document.getElementById('live-badge');
+        if (liveBadge) liveBadge.style.display = 'flex';
+
+        // Try to play, handle autoplay restriction
+        const playPromise = streamVideo.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            console.log('Host video playing');
+          }).catch(err => {
+            console.log('Autoplay prevented for host, showing play button');
+            showPlayButton();
+          });
+        }
+        console.log('Host streaming started');
+      } catch (error) {
+        console.error('Error starting stream:', error);
+        alert('Error accessing camera/microphone. Please check permissions.');
+      }
+    }
+
+    // Screen share functionality
+    async function startScreenShare() {
+      try {
+        screenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: { cursor: 'always' },
+          audio: true
+        });
+
+        // Update UI - screen share becomes main, camera becomes PIP
+        streamVideo.srcObject = screenStream;
+        cameraVideo.srcObject = localStream;
+        cameraVideo.muted = true;
+        videoWrapper.classList.add('has-screenshare');
+        isScreenSharing = true;
+
+        // Update button
+        const toggleScreenshare = document.getElementById('toggle-screenshare');
+        if (toggleScreenshare) {
+          toggleScreenshare.textContent = '🖥️❌';
+          toggleScreenshare.title = 'Stop Screen Share';
+        }
+
+        // Update all peer connections with new streams
+        Object.keys(peerConnections).forEach(viewerId => {
+          const pc = peerConnections[viewerId];
+          
+          // Remove old tracks
+          pc.getSenders().forEach(sender => {
+            if (sender.track && sender.track.kind === 'video') {
+              pc.removeTrack(sender);
+            }
+          });
+
+          // Add screen share video track
+          screenStream.getVideoTracks().forEach(track => {
+            pc.addTrack(track, screenStream);
+          });
+
+          // Add camera video track (for PIP)
+          localStream.getVideoTracks().forEach(track => {
+            pc.addTrack(track, localStream);
+          });
+
+          // Re-negotiate
+          pc.createOffer().then(offer => {
+            pc.setLocalDescription(offer);
+            socket.emit('stream-offer', {
+              roomId,
+              offer,
+              to: viewerId
+            });
+          });
+        });
+
+        // Handle screen share end
+        screenStream.getVideoTracks()[0].onended = () => {
+          stopScreenShare();
+        };
+
+        console.log('Screen sharing started');
+      } catch (error) {
+        console.error('Error starting screen share:', error);
+        if (error.name !== 'NotAllowedError') {
+          alert('Error starting screen share. Please try again.');
+        }
+      }
+    }
+
+    function stopScreenShare() {
+      if (screenStream) {
+        screenStream.getTracks().forEach(track => track.stop());
+        screenStream = null;
+      }
+
+      // Revert UI - camera becomes main again
+      streamVideo.srcObject = localStream;
+      cameraVideo.srcObject = null;
+      videoWrapper.classList.remove('has-screenshare');
+      isScreenSharing = false;
+
+      // Update button
+      const toggleScreenshare = document.getElementById('toggle-screenshare');
+      if (toggleScreenshare) {
+        toggleScreenshare.textContent = '🖥️';
+        toggleScreenshare.title = 'Share Screen';
+      }
+
+      // Update all peer connections
+      Object.keys(peerConnections).forEach(viewerId => {
+        const pc = peerConnections[viewerId];
+        
+        // Remove screen share tracks
+        pc.getSenders().forEach(sender => {
+          if (sender.track && sender.track.kind === 'video') {
+            const track = sender.track;
+            if (track.label.includes('screen') || track.label.includes('display')) {
+              pc.removeTrack(sender);
+            }
+          }
+        });
+
+        // Re-negotiate with just camera
+        pc.createOffer().then(offer => {
+          pc.setLocalDescription(offer);
+          socket.emit('stream-offer', {
+            roomId,
+            offer,
+            to: viewerId
+          });
+        });
+      });
+
+      console.log('Screen sharing stopped');
+    }
+
+    // Stream controls
+    const toggleScreenshare = document.getElementById('toggle-screenshare');
+    const toggleVideo = document.getElementById('toggle-video');
+    const toggleAudio = document.getElementById('toggle-audio');
+    
+    if (toggleScreenshare) {
+      toggleScreenshare.addEventListener('click', () => {
+        if (isScreenSharing) {
+          stopScreenShare();
+        } else {
+          startScreenShare();
+        }
+      });
+    }
+    
+    if (toggleVideo) {
+      toggleVideo.addEventListener('click', () => {
+        if (localStream) {
+          const videoTrack = localStream.getVideoTracks()[0];
+          if (videoTrack) {
+            videoTrack.enabled = !videoTrack.enabled;
+            toggleVideo.textContent = videoTrack.enabled ? '📹' : '📹❌';
+          }
+        }
+      });
+    }
+
+    if (toggleAudio) {
+      toggleAudio.addEventListener('click', () => {
+        if (localStream) {
+          const audioTrack = localStream.getAudioTracks()[0];
+          if (audioTrack) {
+            audioTrack.enabled = !audioTrack.enabled;
+            toggleAudio.textContent = audioTrack.enabled ? '🎤' : '🎤❌';
+          }
+        }
+      });
+    }
+
+    // Chat functionality
+    function sendMessage() {
+      const message = chatInput.value.trim();
+      if (message) {
+        username = usernameInput.value.trim() || 'Anonymous';
+        socket.emit('chat-message', {
+          roomId,
+          message,
+          username
+        });
+        chatInput.value = '';
+      }
+    }
+
+    sendButton.addEventListener('click', sendMessage);
+    chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+
+    socket.on('chat-message', (data) => {
+      const welcomeMsg = chatMessages.querySelector('.welcome-msg');
+      if (welcomeMsg) welcomeMsg.remove();
+
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'message';
+      messageDiv.innerHTML = `
+        <span class="message-username">${data.username}:</span>
+        <span class="message-text">${data.message}</span>
+      `;
+      chatMessages.appendChild(messageDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+
+    socket.on('error', (data) => {
+      console.error('Socket error:', data);
+      alert('Error: ' + data.message);
+      if (data.message === 'Stream not found') {
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 3000);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "streaming-website",
+  "version": "1.0.0",
+  "description": "A live streaming website with webcam/screen sharing and chat",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.5"
+  },
+  "keywords": [
+    "streaming",
+    "webrtc",
+    "chat",
+    "live-stream"
+  ],
+  "author": "tony-EJ",
+  "license": "MIT"
+}

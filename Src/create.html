@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Stream - StreamSwitch</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 100%);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .create-container {
+      width: 100%;
+      max-width: 600px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .header h1 {
+      font-size: 36px;
+      font-weight: 800;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .back-link {
+      color: #a0a0a0;
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover {
+      color: #ff4757;
+    }
+
+    .create-form {
+      background: rgba(20, 20, 20, 0.8);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 40px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #fff;
+      font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 14px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: #fff;
+      font-size: 16px;
+      font-family: inherit;
+      transition: all 0.2s;
+      outline: none;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+      border-color: #ff4757;
+      background: rgba(255, 71, 87, 0.1);
+      box-shadow: 0 0 0 3px rgba(255, 71, 87, 0.1);
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 71, 87, 0.4);
+    }
+
+    .submit-btn:active {
+      transform: translateY(0);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="create-container">
+    <div class="header">
+      <h1>🎬 Create Your Stream</h1>
+      <a href="/" class="back-link">← Back to Home</a>
+    </div>
+
+    <form id="create-stream-form" class="create-form">
+      <div class="form-group">
+        <label for="stream-title">Stream Title</label>
+        <input type="text" id="stream-title" placeholder="Enter your stream title" required />
+      </div>
+
+      <div class="form-group">
+        <label for="stream-description">Description (Optional)</label>
+        <textarea id="stream-description" placeholder="Describe what you'll be streaming..." rows="4"></textarea>
+      </div>
+
+      <button type="submit" class="submit-btn">🚀 Start Streaming</button>
+    </form>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const form = document.getElementById('create-stream-form');
+    const titleInput = document.getElementById('stream-title');
+    const descriptionInput = document.getElementById('stream-description');
+    const submitBtn = form.querySelector('button');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const streamData = {
+        title: titleInput.value.trim(),
+        description: descriptionInput.value.trim()
+      };
+
+      if (!streamData.title) {
+        alert('Please enter a stream title');
+        return;
+      }
+
+      socket.emit('create-stream', streamData);
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating stream...';
+    });
+
+    socket.on('stream-created', (data) => {
+      console.log('Stream created:', data.roomId);
+      window.location.href = `/stream/${data.roomId}?host=true`;
+    });
+
+    socket.on('error', (data) => {
+      alert('Error: ' + data.message);
+      submitBtn.disabled = false;
+      submitBtn.textContent = '🚀 Start Streaming';
+    });
+  </script>
+</body>
+</html>
